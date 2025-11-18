@@ -39,7 +39,7 @@ const Records: React.FunctionComponent = () => {
   const { data: allRecords, isLoadingRecords, fetchError, refetchRecords: refetchAllRecords } = useRecordsData(user, loadingAuth);
   const [activeSearchFilters, setActiveSearchFilters] = React.useState<RecordSearchFilters>({ firstName: '', lastName: '', birthDate: '', deathDate: '' });
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  
+
   // --- State for Map/Table Interaction ---
   const [showMap, setShowMap] = React.useState(true);
   const [activeBlockId, setActiveBlockId] = React.useState<string | null>(null);
@@ -58,7 +58,7 @@ const Records: React.FunctionComponent = () => {
     }
     const { firstName, lastName, birthDate, deathDate } = activeSearchFilters;
     if (firstName) recordsToFilter = recordsToFilter.filter(p => p.firstName.toLowerCase().includes(firstName.toLowerCase()));
-    if (lastName)  recordsToFilter = recordsToFilter.filter(p => p.lastName.toLowerCase().includes(lastName.toLowerCase()));
+    if (lastName) recordsToFilter = recordsToFilter.filter(p => p.lastName.toLowerCase().includes(lastName.toLowerCase()));
     if (birthDate) recordsToFilter = recordsToFilter.filter(p => p.birth && p.birth.includes(birthDate));
     if (deathDate) recordsToFilter = recordsToFilter.filter(p => p.death && p.death.includes(deathDate));
     return recordsToFilter;
@@ -67,7 +67,7 @@ const Records: React.FunctionComponent = () => {
   // --- Search Handlers ---
   const handleSearch = (filters: RecordSearchFilters) => setActiveSearchFilters(filters);
   const handleReset = () => setActiveSearchFilters({ firstName: '', lastName: '', birthDate: '', deathDate: '' });
-  
+
   // --- Modal Logic ---
   const { isModalOpen: isDeleteModalOpen, ...deleteModalProps } = useDeleteConfirmation({ onDeleteSuccess: refetchAllRecords });
   const { isInfoModalOpen, selectedRecordForInfo, openInfoModal, closeInfoModal } = useRecordInfoModal();
@@ -90,10 +90,10 @@ const Records: React.FunctionComponent = () => {
       handleRowOrPlotClick(foundRecord);
     } else {
       setPlotToHighlight(plotIdentifier);
-      if(isInfoModalOpen) closeInfoModal();
+      if (isInfoModalOpen) closeInfoModal();
     }
   }, [allRecords, handleRowOrPlotClick, isInfoModalOpen, closeInfoModal]);
-  
+
   const handleCloseInfoModal = () => {
     closeInfoModal();
     setPlotToHighlight(null);
@@ -145,7 +145,30 @@ const Records: React.FunctionComponent = () => {
           <RecordSearchForm initialFilters={{ firstName: '', lastName: '', birthDate: '', deathDate: '' }} onSearch={handleSearch} onReset={handleReset} />
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:space-x-6">
+        {/* 2. NEW: Full-Width Map Section */}
+        {showMap && (
+          <div className="mb-6"> {/* Add margin-bottom for spacing */}
+            <CemeteryMapManager user={user} activeBlockId={activeBlockId} plotToHighlight={plotToHighlight} recordsForBlock={filteredData} activeLotId={activeLotId} onBlockChange={setActiveBlockId} onPlotClick={handleMapPlotClick} onLotChange={setActiveLotId} />
+          </div>
+        )}
+
+        {/* 3. Table Section (now single column below the map) */}
+        <div className="min-w-0">
+          {isLoadingRecords ? (
+            <div className="text-center py-10 text-gray-500">Loading records...</div>
+          ) : fetchError ? (
+            <div className="my-4 p-4 bg-red-100 text-red-700 rounded-md">Error: {fetchError}</div>
+          ) : (
+            <>
+              <RecordsTableDisplay table={table} onRowClick={handleRowOrPlotClick} />
+              {filteredData.length === 0 && <div className="text-center py-10 text-gray-500">No records found.</div>}
+              {filteredData.length > 0 && <RecordsPagination table={table} />}
+            </>
+          )}
+        </div>
+
+
+        {/* <div className="flex flex-col lg:flex-row lg:space-x-6">
           {showMap && (
             <div className="lg:w-1/2 xl:w-2/5">
                 <CemeteryMapManager user={user} activeBlockId={activeBlockId} plotToHighlight={plotToHighlight} recordsForBlock={filteredData} activeLotId={activeLotId} onBlockChange={setActiveBlockId} onPlotClick={handleMapPlotClick} onLotChange={setActiveLotId}/>
@@ -164,7 +187,7 @@ const Records: React.FunctionComponent = () => {
               </>
             )}
           </div>
-        </div>
+        </div> */}
       </div>
 
       {/* Modals */}
@@ -175,10 +198,10 @@ const Records: React.FunctionComponent = () => {
         record={selectedRecordForInfo}
         canManage={canManageSelectedRecord}
         onDelete={() => {
-            if (selectedRecordForInfo) {
-                handleCloseInfoModal();
-                setTimeout(() => deleteModalProps.openDeleteModal(selectedRecordForInfo), 50);
-            }
+          if (selectedRecordForInfo) {
+            handleCloseInfoModal();
+            setTimeout(() => deleteModalProps.openDeleteModal(selectedRecordForInfo), 50);
+          }
         }}
         onEdit={handleEditClick}
       />

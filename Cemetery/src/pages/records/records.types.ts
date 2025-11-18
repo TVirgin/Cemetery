@@ -31,8 +31,8 @@ export interface BlockLayout {
 
 export interface PlotIdentifier {
   block: string;    
-  lot: number;      
-  plot: number;
-  sect: number;      
+  lot?: number;      
+  plot?: number;
+  sect?: number;      
   rawId: string; 
 }
