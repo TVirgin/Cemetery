@@ -13,11 +13,6 @@ export const router = createBrowserRouter([
     element: <ProtectedRoutes />,
     children: [
       {
-        path: "/",
-        element: <Home />,
-        errorElement: <Error />,
-      },
-      {
         path: "/admin/record",
         element: <AddRecord />,
         errorElement: <Error />,
@@ -27,12 +22,17 @@ export const router = createBrowserRouter([
         element: <Settings />,
         errorElement: <Error />,
       },
-      {
-        path: "/admin/recordsList",
-        element: <Records />,
-        errorElement: <Error />,
-      },
     ],
+  },
+  {
+    path: "/",
+    element: <Home />,
+    errorElement: <Error />,
+  },
+  {
+    path: "/recordsList",
+    element: <Records />,
+    errorElement: <Error />,
   },
   {
     path: "/login",

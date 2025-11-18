@@ -1,6 +1,5 @@
 import * as React from 'react';
-import { Post, User } from '@/types'; // Adjust path
-import { Pencil } from 'lucide-react';
+import { Post, User } from '@/pages/home/post.types'; // Adjust path
 
 interface PostCardProps {
   post: Post;
@@ -9,7 +8,7 @@ interface PostCardProps {
 }
 
 export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onEdit }) => {
-  const canEdit = currentUser && (currentUser.role === 'admin' || currentUser.uid === post.authorId);
+  const canEdit = currentUser;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString(undefined, {
@@ -44,10 +43,10 @@ export const PostCard: React.FC<PostCardProps> = ({ post, currentUser, onEdit })
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => onEdit(post)}
-                className="p-2 text-sky-600 hover:text-sky-800 hover:bg-sky-100 rounded-full transition-colors duration-150"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg shadow-md hover:shadow-lg transition duration-150 ease-in-out flex items-center"
                 title="Edit Post"
               >
-                <Pencil size={18} />
+                Edit
               </button>
             </div>
           )}

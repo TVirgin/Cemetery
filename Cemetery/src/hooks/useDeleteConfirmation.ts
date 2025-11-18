@@ -1,13 +1,14 @@
 // src/hooks/useDeleteConfirmation.ts
 import * as React from 'react';
-import { useUserAuth } from '@/context/userAuthContext';
+import { useUserAuth } from '@/context/userAuthContext'; // Adjust path
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { Person } from '@/pages/records/records.types'; // Adjust path as needed
 
+// --- Import the deleteRecord function from your service ---
+import { deleteRecord } from '@/services/recordService'; // Adjust path as needed
+
 interface UseDeleteConfirmationOptions {
-  onDeleteSuccess?: (deletedRecordId: string | undefined) => void; // Callback with ID of deleted record
-  // You might want to pass the actual Firebase delete function if it varies
-  // performFirebaseDelete: (recordId: string) => Promise<void>;
+  onDeleteSuccess?: (deletedRecordId: string) => void; // Callback with ID of deleted record
 }
 
 export function useDeleteConfirmation({ onDeleteSuccess }: UseDeleteConfirmationOptions) {
@@ -17,7 +18,7 @@ export function useDeleteConfirmation({ onDeleteSuccess }: UseDeleteConfirmation
   const [reauthEmail, setReauthEmail] = React.useState('');
   const [reauthPassword, setReauthPassword] = React.useState('');
   const [modalError, setModalError] = React.useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false); // This now covers re-auth + actual delete
 
   const openDeleteModal = (record: Person) => {
     setRecordToDelete(record);
@@ -29,15 +30,20 @@ export function useDeleteConfirmation({ onDeleteSuccess }: UseDeleteConfirmation
 
   const closeDeleteModal = () => {
     setIsModalOpen(false);
-    setRecordToDelete(null); // Clear record on close
+    setRecordToDelete(null);
     setModalError(null);
-    setIsDeleting(false);
+    setIsDeleting(false); // Reset deleting state
   };
 
   const confirmDelete = async () => {
     if (!recordToDelete || !user) {
       setModalError("Cannot proceed: User or record information is missing.");
       return;
+    }
+    // The Person type now has id: string (non-optional), so recordToDelete.id is safe.
+    if (!recordToDelete.id) {
+        setModalError("Cannot proceed: Record ID is missing.");
+        return;
     }
     if (!reauthEmail.trim() || !reauthPassword.trim()) {
       setModalError("Email and password are required for re-authentication.");
@@ -48,24 +54,26 @@ export function useDeleteConfirmation({ onDeleteSuccess }: UseDeleteConfirmation
     setModalError(null);
 
     try {
+      // Step 1: Re-authenticate the user
       const credential = EmailAuthProvider.credential(reauthEmail, reauthPassword);
       await reauthenticateWithCredential(user, credential);
       console.log("User re-authenticated successfully.");
 
-      // --- !!! REPLACE THIS WITH ACTUAL FIREBASE DELETION LOGIC !!! ---
-      // Example: await deleteDoc(doc(db, "yourCollectionName", recordToDelete.id!)); // Use recordToDelete.id
-      console.log("Record deletion initiated (simulated) for ID:", recordToDelete.id);
-      // --- END OF SIMULATED DELETION ---
+      // Step 2: Perform the actual deletion using the service function
+      console.log("Attempting to delete record with ID:", recordToDelete.id);
+      await deleteRecord(recordToDelete.id); // Call your service function
+      console.log("Record successfully deleted from database.");
 
+      // Step 3: Call success callback and close modal
       if (onDeleteSuccess) {
-        onDeleteSuccess(recordToDelete.id); // Pass back the ID (or the whole record)
+        onDeleteSuccess(recordToDelete.id);
       }
       closeDeleteModal();
 
     } catch (error: any) {
       console.error("Re-authentication or Deletion Failed:", error);
       let message = 'An unexpected error occurred. Please try again.';
-      if (error.code) {
+      if (error.code) { // Firebase auth errors often have a 'code'
         switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/invalid-credential':
@@ -77,9 +85,12 @@ export function useDeleteConfirmation({ onDeleteSuccess }: UseDeleteConfirmation
           case 'auth/too-many-requests':
             message = 'Access to this account has been temporarily disabled. Please try again later.';
             break;
-          default:
-            message = 'An error occurred during re-authentication.';
+          default: // Could be an auth error or an error from deleteRecord if it throws a specific type
+            message = error.message || 'An error occurred during the process.';
         }
+      } else {
+        // Non-Firebase auth error (e.g., from deleteRecord if it throws a generic error)
+        message = error.message || 'Failed to delete the record after re-authentication.';
       }
       setModalError(message);
     } finally {

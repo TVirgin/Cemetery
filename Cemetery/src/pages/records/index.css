@@ -32,7 +32,7 @@ html {
     font-size: 1em;
     font-weight: 500;
     font-family: inherit;
-    background-color: #686ff5;
+    background-color: #ffffff;
     cursor: pointer;
     transition: border-color 0.25s;
   }
@@ -44,7 +44,7 @@ html {
     font-size: 1em;
     font-weight: 500;
     font-family: inherit;
-    background-color: #535bf2;
+    background-color: #ffffff;
     cursor: pointer;
     transition: border-color 0.25s;
   }

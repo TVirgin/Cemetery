@@ -1,0 +1,45 @@
+/* Styles extracted from SVG components */
+
+/* Styles from Block1SVG.tsx and Block1ESVG.tsx */
+.plot-interaction-layer {
+  fill: rgba(74, 144, 226, 0.1); /* Light blue overlay */
+  stroke: rgba(44, 82, 130, 0.5);
+  stroke-width: 0.5px;
+  cursor: pointer;
+  transition: fill 0.2s ease;
+}
+
+.plot-interaction-layer:hover {
+  fill: rgb(74, 145, 226);
+}
+
+.plot-highlighted {
+  fill: rgba(255, 165, 0, 0.7) !important; /* Orange highlight */
+  stroke: rgba(200, 100, 0, 1) !important;
+  stroke-width: 1.5px !important;
+}
+
+/* Styles from CemeteryMapSVG.tsx */
+/* Note: If CemeteryMapSVG uses these classes, these rules might override or combine with the ones above,
+   depending on CSS cascade and specificity. */
+
+.plot-interaction-layer.cemetery-map-style { /* Example of using a more specific class if needed */
+  /* The inline fill/stroke from Inkscape will be used initially.
+     Adding a cursor to indicate interactivity. */
+  cursor: pointer;
+  transition: fill-opacity 0.2s ease, stroke-opacity 0.2s ease;
+}
+
+.plot-interaction-layer.cemetery-map-style:hover {
+  /* On hover, make the plot slightly more visible */
+  fill-opacity: 0.6 !important;
+  stroke-opacity: 0.9 !important;
+}
+
+.plot-highlighted.cemetery-map-style {
+  /* This class is toggled by JavaScript to show selection */
+  fill: rgba(255, 165, 0, 0.7) !important; /* A bright orange highlight */
+  stroke: rgba(200, 100, 0, 1) !important;
+  stroke-width: 2px !important;
+  stroke-opacity: 1 !important;
+}

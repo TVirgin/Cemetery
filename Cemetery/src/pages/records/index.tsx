@@ -1,268 +1,215 @@
 // src/pages/Records/index.tsx
-
 import Layout from '@/components/layout';
 import * as React from 'react';
-import './index.css'; // Your existing styles
+import './index.css';
 import {
   ColumnDef,
-  flexRender,
   getCoreRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  SortingState,
   useReactTable,
 } from '@tanstack/react-table';
-import { makeData } from './makeData'; 
-import { Person } from './records.types';
+import { Person, RecordSearchFilters, PlotIdentifier } from './records.types';
 import { staticPersonColumns } from './recordTable.config';
 import { useUserAuth } from '../../context/userAuthContext';
 import { useDeleteConfirmation } from '../../hooks/useDeleteConfirmation';
 import { DeleteConfirmationModal } from '../../components/modals/DeleteConfirmationModal';
 import { useRecordInfoModal } from '../../hooks/useRecordInfoModal';
 import { RecordInfoModal } from '../../components/modals/RecordInfoModal';
+import { useRecordsData } from '../../hooks/useRecordsData';
+import { RecordsTableDisplay } from '../../components/records/RecordsTableDisplay';
+import { RecordsPagination } from '../../components/records/RecordsPagination';
+import { useRecordManagementPermission } from '../../hooks/useRecordManagementPermission';
+import { updateRecord } from '../../services/recordService';
 
-interface IRecordsProps {}
+import { Button } from "@/components/ui/button";
+import { MapPin } from "lucide-react";
 
-const Records: React.FunctionComponent<IRecordsProps> = (props) => {
-  const [data, setData] = React.useState(() => makeData(1000) as Person[]);
-  const { user } = useUserAuth(); // Get current Firebase user
+import { RecordSearchForm } from './RecordSearchForm';
+import { CemeteryMapManager } from './CemeteryMapManager';
+import { useRecordEditModal } from '@/hooks/useRecordEditModal';
+import { RecordEditModal } from '@/components/modals/RecordEditModal';
 
-  // Delete Modal Logic
-  const {
-    isModalOpen: isDeleteModalOpen,
-    recordToDelete,
-    reauthEmail,
-    setReauthEmail,
-    reauthPassword,
-    setReauthPassword,
-    modalError: deleteModalError,
-    isDeleting,
-    openDeleteModal,
-    closeDeleteModal,
-    confirmDelete,
-  } = useDeleteConfirmation({
-    onDeleteSuccess: (deletedRecordId) => {
-      setData(currentData => currentData.filter(p => p.id !== deletedRecordId));
+
+const Records: React.FunctionComponent = () => {
+  const { user, loadingAuth } = useUserAuth();
+
+  // --- State for Data and Filtering ---
+  const { data: allRecords, isLoadingRecords, fetchError, refetchRecords: refetchAllRecords } = useRecordsData(user, loadingAuth);
+  const [activeSearchFilters, setActiveSearchFilters] = React.useState<RecordSearchFilters>({ firstName: '', lastName: '', birthDate: '', deathDate: '' });
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+
+  // --- State for Map/Table Interaction ---
+  const [showMap, setShowMap] = React.useState(true);
+  const [activeBlockId, setActiveBlockId] = React.useState<string | null>(null);
+  const [plotToHighlight, setPlotToHighlight] = React.useState<PlotIdentifier | null>(null);
+  const [activeLotId, setActiveLotId] = React.useState<number | null>(null);
+
+
+  // --- Derived State: Filtered Data for Table ---
+  const filteredData = React.useMemo(() => {
+    let recordsToFilter = [...allRecords];
+    if (activeBlockId) {
+      recordsToFilter = recordsToFilter.filter(person => person.block === activeBlockId);
     }
-  });
+    if (activeLotId) {
+      recordsToFilter = recordsToFilter.filter(person => person.lot === activeLotId);
+    }
+    const { firstName, lastName, birthDate, deathDate } = activeSearchFilters;
+    if (firstName) recordsToFilter = recordsToFilter.filter(p => p.firstName.toLowerCase().includes(firstName.toLowerCase()));
+    if (lastName) recordsToFilter = recordsToFilter.filter(p => p.lastName.toLowerCase().includes(lastName.toLowerCase()));
+    if (birthDate) recordsToFilter = recordsToFilter.filter(p => p.birth && p.birth.includes(birthDate));
+    if (deathDate) recordsToFilter = recordsToFilter.filter(p => p.death && p.death.includes(deathDate));
+    return recordsToFilter;
+  }, [allRecords, activeSearchFilters, activeBlockId, activeLotId]);
 
-  // Info Modal Logic
-  const {
-    isInfoModalOpen,
-    selectedRecordForInfo,
-    openInfoModal,
-    closeInfoModal,
-  } = useRecordInfoModal();
+  // --- Search Handlers ---
+  const handleSearch = (filters: RecordSearchFilters) => setActiveSearchFilters(filters);
+  const handleReset = () => setActiveSearchFilters({ firstName: '', lastName: '', birthDate: '', deathDate: '' });
 
-  // Edit Click Handler
-  const handleEditClick = React.useCallback((personToEdit: Person) => {
-    console.log("Edit:", personToEdit);
-    // TODO: Implement actual edit logic (e.g., navigate or open a dedicated edit modal)
-    // For example, you might set state for an edit modal:
-    // setSelectedRecordForEdit(personToEdit);
-    // setIsEditModalOpen(true);
-    closeInfoModal(); // Close info modal after initiating edit
-  }, [closeInfoModal]);
+  // --- Modal Logic ---
+  const { isModalOpen: isDeleteModalOpen, ...deleteModalProps } = useDeleteConfirmation({ onDeleteSuccess: refetchAllRecords });
+  const { isInfoModalOpen, selectedRecordForInfo, openInfoModal, closeInfoModal } = useRecordInfoModal();
+  const { isEditModalOpen, recordToEdit, openEditModal, closeEditModal } = useRecordEditModal(); // New edit modal hook
+  const canManageSelectedRecord = useRecordManagementPermission(user, selectedRecordForInfo);
 
-  // --- Permission Check Logic ---
-  const [canManageSelectedRecord, setCanManageSelectedRecord] = React.useState(false);
+  // --- Interaction Handlers ---
+  const handleRowOrPlotClick = React.useCallback((person: Person) => {
+    openInfoModal(person);
+    if (person.block && typeof person.lot === 'number' && typeof person.sect === 'number') {
+      setActiveBlockId(person.block);
+      setActiveLotId(person.lot);
+      setPlotToHighlight({ block: person.block, lot: person.lot, sect: person.sect, plot: person.plot, rawId: `plot-${person.block}-${person.lot}-${person.sect}-${person.plot}` });
+    }
+  }, [openInfoModal]);
 
-  React.useEffect(() => {
-    if (user && selectedRecordForInfo) {
-      // Example Permission Logic:
-      // 1. User has an 'admin' role (assuming 'role' exists on your user object,
-      //    you might need to cast `user` or fetch custom claims)
-      // const isAdmin = (user as any).customClaims?.role === 'admin';
-      const isAdmin = (user as any).role === 'admin'; // Simpler example, adjust as per your user object
-
-      // 2. Or, user is the owner of the record (assuming 'ownerId' exists on Person type)
-      // const isOwner = selectedRecordForInfo.ownerId && user.uid === selectedRecordForInfo.ownerId;
-      // For this example, let's just use isAdmin for simplicity.
-      // Replace with your actual permission logic.
-      // setCanManageSelectedRecord(isAdmin || isOwner);
-
-      // Simplified: For now, let's assume admins can manage.
-      // In a real app, 'user.role' might come from custom claims in Firebase.
-      // You might need to type your 'user' from useUserAuth more specifically if it includes 'role'.
-      if (isAdmin) {
-        setCanManageSelectedRecord(true);
-      } else {
-        // Add more sophisticated checks here, e.g., if record has an ownerId
-        // For instance, if `Person` type has `createdByUid?: string`
-        // const isOwner = selectedRecordForInfo.createdByUid === user.uid;
-        // setCanManageSelectedRecord(isOwner);
-        setCanManageSelectedRecord(false); // Default to false if not admin for this example
-      }
-
+  const handleMapPlotClick = React.useCallback((plotIdentifier: PlotIdentifier) => {
+    const foundRecord = allRecords.find(p => p.block === plotIdentifier.block && p.lot === plotIdentifier.lot && p.sect === plotIdentifier.sect);
+    if (foundRecord) {
+      handleRowOrPlotClick(foundRecord);
     } else {
-      setCanManageSelectedRecord(false);
+      setPlotToHighlight(plotIdentifier);
+      if (isInfoModalOpen) closeInfoModal();
     }
-  }, [user, selectedRecordForInfo]);
+  }, [allRecords, handleRowOrPlotClick, isInfoModalOpen, closeInfoModal]);
 
+  const handleCloseInfoModal = () => {
+    closeInfoModal();
+    setPlotToHighlight(null);
+  };
 
-  // Columns definition no longer includes explicit action columns here
-  const columns = React.useMemo<ColumnDef<Person>[]>(
-    () => [
-      ...staticPersonColumns,
-      // Action columns are removed from here
-    ],
-    [] // staticPersonColumns is stable, so dependencies can be empty
-       // If staticPersonColumns could change, add it here.
-  );
+  const handleEditClick = React.useCallback(() => {
+    if (selectedRecordForInfo) {
+      // Close the info modal first
+      handleCloseInfoModal();
+      // Open the edit modal after a short delay to allow for smooth transition
+      setTimeout(() => openEditModal(selectedRecordForInfo), 50);
+    }
+  }, [selectedRecordForInfo, handleCloseInfoModal, openEditModal]);
 
+  const handleSaveRecord = async (updatedRecord: Person) => {
+    try {
+      await updateRecord(updatedRecord); // This function will update the record in Firestore
+      closeEditModal();
+      refetchAllRecords();
+    } catch (error) {
+      console.error("Failed to update record:", error);
+      // Re-throw to allow the modal to display the error
+      throw error;
+    }
+  };
+
+  // --- Table Setup ---
+  const columns = React.useMemo<ColumnDef<Person>[]>(() => [...staticPersonColumns], []);
   const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 10,
-      },
-    },
+    data: filteredData, columns, state: { sorting }, onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(), getPaginationRowModel: getPaginationRowModel(), getSortedRowModel: getSortedRowModel(),
+    initialState: { pagination: { pageSize: 10 } },
   });
+
+  if (loadingAuth) {
+    return <Layout><div className="p-6 text-center">Authenticating...</div></Layout>;
+  }
 
   return (
     <Layout>
-      <div className="p-4 sm:p-6 bg-white rounded-lg shadow-xl mx-auto max-w-7xl">
-        <h1 className="text-2xl font-semibold text-gray-800 mb-6">User Records</h1>
-
-        <div className="overflow-x-auto rounded-md border border-gray-200">
-          <table className="min-w-full">
-            <thead className="bg-gray-100">
-              {table.getHeaderGroups().map(headerGroup => (
-                <tr key={headerGroup.id}>
-                  {headerGroup.headers.map(header => (
-                    <th
-                      key={header.id}
-                      colSpan={header.colSpan}
-                      scope="col"
-                      style={{ width: header.getSize() !== 150 ? header.getSize() : undefined }}
-                      className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider whitespace-nowrap border-b-2 border-gray-200"
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext()
-                          )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.length > 0 ? (
-                table.getRowModel().rows.map(row => (
-                  <tr
-                    key={row.id}
-                    onClick={() => openInfoModal(row.original)}
-                    className="odd:bg-white even:bg-gray-50 hover:bg-sky-100 transition-colors duration-150 cursor-pointer"
-                  >
-                    {row.getVisibleCells().map(cell => (
-                      <td
-                        key={cell.id}
-                        style={{ width: cell.column.getSize() !== 150 ? cell.column.getSize() : undefined }}
-                        className="px-4 py-3 text-sm text-gray-700 whitespace-nowrap"
-                      >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td
-                    colSpan={columns.length}
-                    className="px-6 py-10 text-center text-sm text-gray-500"
-                  >
-                    No records found.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      <div className="p-4 sm:p-6 bg-white rounded-lg shadow-xl mx-auto max-w-full xl:max-w-screen-2xl">
+        <div className="mb-6 pb-4 border-b border-gray-200">
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+            <h1 className="text-xl md:text-2xl font-semibold text-gray-800 mb-2 sm:mb-0">Cemetery Records</h1>
+            <Button variant="outline" onClick={() => setShowMap(!showMap)} className="flex items-center w-full sm:w-auto">
+              <MapPin size={18} className="mr-2" /> {showMap ? "Hide Map" : "Show Map"}
+            </Button>
+          </div>
+          <RecordSearchForm initialFilters={{ firstName: '', lastName: '', birthDate: '', deathDate: '' }} onSearch={handleSearch} onReset={handleReset} />
         </div>
 
-        {/* Pagination Controls */}
-        <div className="py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-           {/* ... pagination buttons (kept same as your last version) ... */}
-           <div className="flex items-center gap-2">
-            <button onClick={() => table.setPageIndex(0)} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 text-xs font-medium rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">{'<< First'}</button>
-            <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="px-3 py-1.5 text-xs font-medium rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">{'< Previous'}</button>
-            <button onClick={() => table.nextPage()} disabled={!table.getCanNextPage()} className="px-3 py-1.5 text-xs font-medium rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">{'Next >'}</button>
-            <button onClick={() => table.setPageIndex(table.getPageCount() - 1)} disabled={!table.getCanNextPage()} className="px-3 py-1.5 text-xs font-medium rounded-md shadow-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">{'Last >>'}</button>
+        {/* 2. NEW: Full-Width Map Section */}
+        {showMap && (
+          <div className="mb-6"> {/* Add margin-bottom for spacing */}
+            <CemeteryMapManager user={user} activeBlockId={activeBlockId} plotToHighlight={plotToHighlight} recordsForBlock={filteredData} activeLotId={activeLotId} onBlockChange={setActiveBlockId} onPlotClick={handleMapPlotClick} onLotChange={setActiveLotId} />
           </div>
-          <span className="flex items-center gap-1 text-xs text-gray-700">
-            <div>Page</div>
-            <strong>
-              {table.getState().pagination.pageIndex + 1} of{' '}
-              {table.getPageCount()}
-            </strong>
-          </span>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-700 hidden sm:inline">Go to page:</span>
-            <input
-              type="number"
-              min={1}
-              max={table.getPageCount()}
-              defaultValue={table.getState().pagination.pageIndex + 1}
-              onChange={e => {
-                const page = e.target.value ? Number(e.target.value) - 1 : 0;
-                 if (page >=0 && page < table.getPageCount()) {
-                    table.setPageIndex(page);
-                } else {
-                    e.target.value = String(table.getState().pagination.pageIndex + 1);
-                }
-              }}
-              className="w-16 px-2 py-1.5 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-            />
-            <select
-              value={table.getState().pagination.pageSize}
-              onChange={e => { table.setPageSize(Number(e.target.value)); }}
-              className="px-2 py-1.5 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              {[10, 20, 30, 40, 50, 100].map(pageSize => (
-                <option key={pageSize} value={pageSize}> Show {pageSize} </option>
-              ))}
-            </select>
-          </div>
+        )}
+
+        {/* 3. Table Section (now single column below the map) */}
+        <div className="min-w-0">
+          {isLoadingRecords ? (
+            <div className="text-center py-10 text-gray-500">Loading records...</div>
+          ) : fetchError ? (
+            <div className="my-4 p-4 bg-red-100 text-red-700 rounded-md">Error: {fetchError}</div>
+          ) : (
+            <>
+              <RecordsTableDisplay table={table} onRowClick={handleRowOrPlotClick} />
+              {filteredData.length === 0 && <div className="text-center py-10 text-gray-500">No records found.</div>}
+              {filteredData.length > 0 && <RecordsPagination table={table} />}
+            </>
+          )}
         </div>
+
+
+        {/* <div className="flex flex-col lg:flex-row lg:space-x-6">
+          {showMap && (
+            <div className="lg:w-1/2 xl:w-2/5">
+                <CemeteryMapManager user={user} activeBlockId={activeBlockId} plotToHighlight={plotToHighlight} recordsForBlock={filteredData} activeLotId={activeLotId} onBlockChange={setActiveBlockId} onPlotClick={handleMapPlotClick} onLotChange={setActiveLotId}/>
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            {isLoadingRecords ? (
+                <div className="text-center py-10 text-gray-500">Loading records...</div>
+            ) : fetchError ? (
+                <div className="my-4 p-4 bg-red-100 text-red-700 rounded-md">Error: {fetchError}</div>
+            ) : (
+              <>
+                <RecordsTableDisplay table={table} onRowClick={handleRowOrPlotClick} />
+                {filteredData.length === 0 && <div className="text-center py-10 text-gray-500">No records found.</div>}
+                {filteredData.length > 0 && <RecordsPagination table={table} />}
+              </>
+            )}
+          </div>
+        </div> */}
       </div>
 
-      {/* Render Modals */}
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={closeDeleteModal}
-        onConfirm={confirmDelete}
-        record={recordToDelete}
-        email={reauthEmail}
-        onEmailChange={setReauthEmail}
-        password={reauthPassword}
-        onPasswordChange={setReauthPassword}
-        error={deleteModalError}
-        isDeleting={isDeleting}
-      />
-
+      {/* Modals */}
+      <DeleteConfirmationModal isOpen={isDeleteModalOpen} {...deleteModalProps} />
       <RecordInfoModal
         isOpen={isInfoModalOpen}
-        onClose={closeInfoModal}
+        onClose={handleCloseInfoModal}
         record={selectedRecordForInfo}
         canManage={canManageSelectedRecord}
-        onEdit={() => {
-          if (selectedRecordForInfo) {
-            handleEditClick(selectedRecordForInfo);
-            // No need to closeInfoModal here, handleEditClick does it if it opens another modal or navigates
-          }
-        }}
         onDelete={() => {
           if (selectedRecordForInfo) {
-            // Important: Close info modal BEFORE opening delete modal to avoid overlap issues
-            closeInfoModal();
-            // A slight delay can ensure the info modal is visually gone before delete modal appears
-            setTimeout(() => {
-                openDeleteModal(selectedRecordForInfo);
-            }, 50); // Adjust delay as needed, or remove if not an issue
+            handleCloseInfoModal();
+            setTimeout(() => deleteModalProps.openDeleteModal(selectedRecordForInfo), 50);
           }
         }}
+        onEdit={handleEditClick}
+      />
+      <RecordEditModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        record={recordToEdit}
+        onSave={handleSaveRecord}
       />
     </Layout>
   );

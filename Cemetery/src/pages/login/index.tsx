@@ -181,30 +181,10 @@ const Login: React.FunctionComponent<ILoginProps> = (props) => {
                 </div>
                 <div className="relative flex justify-center text-xs uppercase">
                   <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
+                    Or contact anthony.virgin@gmail.com
                   </span>
                 </div>
               </div>
-
-              {/* Google Sign-In Button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                type="button" // VERY IMPORTANT: type="button" to prevent form submission
-                onClick={handleGoogleSignIn}
-                disabled={isLoading}
-              >
-                {/* Add Google Icon here if you have it, e.g., from `lucide-react` or your Icons component */}
-                {/* <Icons.google className="mr-2 h-4 w-4" /> */}
-                {isLoading ? "Processing..." : "Sign In with Google"}
-              </Button>
-
-              <p className="mt-2 text-xs text-center text-muted-foreground"> {/* Adjusted margin */}
-                Don't have an account?{" "}
-                <Link to="/signup" className="underline hover:text-primary font-medium">
-                  Sign up
-                </Link>
-              </p>
             </CardFooter>
           </form>
         </Card>

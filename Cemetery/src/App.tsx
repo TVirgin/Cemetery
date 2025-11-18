@@ -1,15 +1,15 @@
 import * as React from "react";
 import { RouterProvider } from "react-router-dom";
 import router from "./routes";
-import { UserAuethProvider } from "./context/userAuthContext";
+import { UserAuthProvider } from "./context/userAuthContext";
 
 interface IAppProps {}
 
 const App: React.FunctionComponent<IAppProps> = () => {
   return (
-    <UserAuethProvider>
+    <UserAuthProvider>
       <RouterProvider router={router} />
-    </UserAuethProvider>
+    </UserAuthProvider>
   );
 };
 
