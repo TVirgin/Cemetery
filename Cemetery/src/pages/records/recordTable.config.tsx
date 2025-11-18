@@ -45,14 +45,14 @@ export const staticPersonColumns: ColumnDef<Person>[] = [
     footer: props => props.column.id,
   },
   {
-    accessorKey: 'lot',
-    header: 'Lot',
+    accessorKey: 'sect',
+    header: 'Section',
     cell: info => info.getValue(),
     footer: props => props.column.id,
   },
   {
-    accessorKey: 'pos',
-    header: 'Position',
+    accessorKey: 'lot',
+    header: 'Lot',
     cell: info => info.getValue(),
     footer: props => props.column.id,
   },

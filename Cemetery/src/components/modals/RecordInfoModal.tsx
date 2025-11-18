@@ -85,7 +85,7 @@ export const RecordInfoModal: React.FC<RecordInfoModalProps> = ({
             <div><strong>Death Info:</strong> <span className="text-gray-900">{formatDateDisplay(record.death)}</span></div>
             <div><strong>Block:</strong> <span className="text-gray-900">{record.block}</span></div>
             <div><strong>Row:</strong> <span className="text-gray-900">{record.lot}</span></div>
-            <div><strong>Position:</strong> <span className="text-gray-900">{record.pos}</span></div>
+            <div><strong>Position:</strong> <span className="text-gray-900">{record.sect}</span></div>
           </div>
         </div>
 

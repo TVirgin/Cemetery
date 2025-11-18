@@ -22,7 +22,7 @@ export const useRecordForm = (initialRecord?: Person | null) => {
         death: '',
         block: '',
         lot: undefined,
-        pos: undefined,
+        sect: undefined,
         plot: undefined,
       });
     }

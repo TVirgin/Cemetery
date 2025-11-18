@@ -106,7 +106,7 @@ export const RecordEditModal: React.FC<RecordEditModalProps> = ({ isOpen, onClos
                     </div>
                     <div>
                         <Label htmlFor="pos">Position</Label>
-                        <Input id="pos" type="number" value={formData.pos ?? ''} onChange={handleNumericInputChange} disabled={isSaving} />
+                        <Input id="pos" type="number" value={formData.sect ?? ''} onChange={handleNumericInputChange} disabled={isSaving} />
                     </div>
                     <div>
                         <Label htmlFor="plot">Plot</Label>

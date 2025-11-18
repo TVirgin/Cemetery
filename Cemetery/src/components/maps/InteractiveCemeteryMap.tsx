@@ -24,7 +24,7 @@ export const parsePlotDomId = (domId: string): PlotIdentifier | null => {
       const lot = parseInt(parts[1], 10);
       const pos = parseInt(parts[2], 10);
       if (block && !isNaN(lot) && !isNaN(pos)) {
-        return { block, lot, pos, rawId: domId };
+        return { block, lot, sect: pos, rawId: domId };
       }
     }
   }

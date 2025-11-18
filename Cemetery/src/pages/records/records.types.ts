@@ -7,8 +7,9 @@ export type Person = {
     death: string;
     block: string;
     lot: number;
-    pos: number;
     plot: number;
+    // Layout of some blocks are different and follow Block -> Lot -> Section -> Plot
+    sect: number;
   };
 
 
@@ -21,15 +22,17 @@ export interface RecordSearchFilters {
 
 export interface BlockLayout {
   id: string;
-  blockName: string;
   lotCount: number;
-  plotsPerLot: number;
+  plotCount: number; 
+  sectionCount: number;
+  lotColumns?: number; // NEW: Number of columns for lots (e.g., 1 or 2)
+  hasSection: boolean;
 }
 
 export interface PlotIdentifier {
-  block: string;
-  lot?: number;
-  pos?: number;
-  plot?: number;
-  rawId: string;
+  block: string;    
+  lot: number;      
+  plot: number;
+  sect: number;      
+  rawId: string; 
 }

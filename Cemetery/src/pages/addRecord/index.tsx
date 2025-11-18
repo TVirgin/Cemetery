@@ -37,7 +37,7 @@ const AddRecord: React.FunctionComponent = () => {
     if (success) {
       setSuccessMessage("Record added successfully!");
       // Reset form by re-initializing the hook's state
-      setFormData({ firstName: '', middleName: '', lastName: '', birth: '', death: '', block: '', lot: undefined, pos: undefined, plot: undefined});
+      setFormData({ firstName: '', middleName: '', lastName: '', birth: '', death: '', block: '', lot: undefined, sect: undefined, plot: undefined});
       setTimeout(() => setSuccessMessage(null), 3000);
     }
   };
@@ -89,7 +89,7 @@ const AddRecord: React.FunctionComponent = () => {
                       </div>
                       <div className="space-y-1.5">
                           <Label htmlFor="pos">Position</Label>
-                          <Input id="pos" type="number" value={formData.pos ?? ''} onChange={handleNumericInputChange} disabled={isProcessing} />
+                          <Input id="pos" type="number" value={formData.sect ?? ''} onChange={handleNumericInputChange} disabled={isProcessing} />
                       </div>
                       <div className="space-y-1.5">
                           <Label htmlFor="plot">Plot</Label>

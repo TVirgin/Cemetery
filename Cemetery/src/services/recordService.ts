@@ -56,7 +56,7 @@ export const getRecords = async (): Promise<Person[]> => {
         // --- End Conversion ---
         block: data.block,
         lot: data.lot,
-        pos: data.pos,
+        sect: data.pos,
         plot: data.plot,
         userId: data.userId, // If you added userId to your Person type
       } as Person; // Cast to Person, ensure all fields align with your Person type
